@@ -21,7 +21,7 @@
 /* Define ------------------------------------------------------------*/
 #define LED_GREEN   PB5
 #define LED_OUT     PB0
-#define BUTTON      PD2
+#define BUT      PD2
 #define BLINK_DELAY 250
 
 /* Variables ---------------------------------------------------------*/
@@ -36,11 +36,15 @@
 int main(void)
 {
     /* Set output pin */
-    DDRB |= _BV(LED_GREEN);         /* DDRB = DDRB or (0010 0000) */
-    DDRB |= _BV(LED_OUT);
+   /* DDRB |= _BV(LED_GREEN);        
+    DDRB |= _BV(LED_OUT);*/
+    GPIO_config_output(&DDRB,LED_GREEN);
+    GPIO_config_output(&DDRB,LED_OUT);
 
-    DDRD &= ~_BV(BUT);
-    PORTD |= _BV(BUT);
+    GPIO_config_input_pullup(&PORTD, BUT);
+
+    /*DDRD &= ~_BV(BUT);
+    PORTD |= _BV(BUT);5555555*/
 
     /* Turn LED off */
     PORTB &= ~_BV(LED_GREEN);       /* PORTB = PORTB and (0010 0000) */
@@ -49,13 +53,14 @@ int main(void)
     /* Infinite loop */
     for (;;)
     {
+
       if (bit_is_set(PIND , BUT))  
       {
-        PORTB ^= _BV(LED_GREEN);    /* PORTB = PORTB xor (0010 0000) */
-        _delay_ms(BLINK_DELAY);     /* Wait for several milisecs */
+        GPIO_toggle(&PORTB,LED_GREEN);  
+        _delay_ms(BLINK_DELAY);     
       }
       else{
-        PORTB ^= _BV(LED_OUT);
+        GPIO_toggle(&PORTB,LED_OUT);
         _delay_ms(BLINK_DELAY);
       }
     }

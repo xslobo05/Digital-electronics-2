@@ -17,7 +17,7 @@
 
 ## Introduction
 
-The repository contains AVR template for bachelor course *Digital Electronics 2* ([Winter 2019/2020](https://www.vutbr.cz/en/students/courses/detail/210896)) at Brno University of Technology, Czechia. The repository has the following hierarchy:
+The REPOSITORY contains AVR template for bachelor course *Digital Electronics 2* ([Winter 2019/2020](https://www.vutbr.cz/en/students/courses/detail/210896)) at Brno University of Technology, Czechia. The repository has the following hierarchy:
 
 ```bash
 avr-template$ tree
