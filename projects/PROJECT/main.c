@@ -6,6 +6,8 @@
 #include "uart.h"
 #include "nokia5110.h"
 #include "usound.h"
+#include "twi.h"
+#include <stdbool.h> 
 
 /* Typedef -----------------------------------------------------------*/
 
@@ -16,7 +18,32 @@
 /* Function prototypes -----------------------------------------------*/
 
 /* Functions ---------------------------------------------------------*/
-/* Call assembly functions to generate psudo-random values. */
+uint8_t time_dif(uint8_t min1, uint8_t sec1, uint8_t min2, uint8_t sec2, uint8_t *result)
+/* time1 - time2 = result */
+{
+    uint8_t min_result, sec_result;
+    
+    if (min2 > min1)    //vrati nulu kdyz by vysel zaporny cas
+    {
+        return 0;
+    }
+
+    else if (sec1 < sec2 && min1 > 0)    //pri presahu minut
+    {
+        sec_result = 60 - (sec2-sec1);
+        min_result = min1 - min2 -1;
+        
+    }
+    else
+    {
+        sec_result = sec1 - sec2;
+        min_result = min1 - min2;
+        
+    }
+    result[0] = min_result;
+    result[1] = sec_result;
+    return 1;
+}
 
 
 /* Main --------------------------------------------------------------*/
@@ -27,17 +54,33 @@
 
 int main(void)
 {
-    uint32_t distance;
+    uint32_t distance, rtc;
     char dist[5];
+    char zobrazeni_sekund[3], zobrazeni_minut[3];
+    bool detekce=1;
+    uint8_t adresa_clocku = 0x68;
+    uint8_t pocitani_minut=0, pocitani_desitek=0, pocitani_sekund=0;
+    uint8_t casy[4][2], kola=0;
+    int i,j;
+    uint8_t result[2];
 
     /* Inicializace displeje */
     nokia_lcd_init();                               
     nokia_lcd_clear();
     nokia_lcd_write_string("Vzdalenost[cm]",1);
     nokia_lcd_render();
+
+    /* Inicializace DS3231 casoveho obvodu */
+    twi_init();
     
     /* Inicializace HCSR04 senzoru vzdalenosti */
     usound_init();
+
+    for(i=0;i<4;i++)
+    {
+        for(j=0;j<2;j++)
+            casy[i][j] = 0;
+    }
 
     for(;;){
         
@@ -45,11 +88,91 @@ int main(void)
         _delay_ms(100);                         
         distance = readDistance();              
         itoa(distance,dist,10);
+
+        twi_start((adresa_clocku<<1) + TWI_WRITE);
+        twi_write(0);
+        twi_stop();
+        twi_start((adresa_clocku<<1) + TWI_READ);
+        rtc=twi_read_nack();
+        twi_stop();
+
+        pocitani_sekund = 0b00001111 & rtc;
+        rtc = rtc >> 4;
+        pocitani_desitek = rtc;
+
+        
+        pocitani_sekund=10*pocitani_desitek + pocitani_sekund;
+        if(pocitani_sekund == 59)   detekce=1;
+    
+        if (pocitani_sekund == 0 && detekce)
+        {
+            pocitani_minut++;
+            detekce=0;
+        }
+
+        if(distance <= 10){
+            switch (kola) {
+                case 0:
+                    casy[0][0] = pocitani_minut;
+                    casy[0][1] = pocitani_sekund;
+                    itoa(casy[0][1],zobrazeni_sekund,10);
+                    itoa(casy[0][0],zobrazeni_minut,10);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string("       ",1);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
+                    nokia_lcd_render();
+                    break;
+                case 1:
+                    time_dif(pocitani_minut,pocitani_sekund,casy[0][0],casy[0][1],result);
+                    casy[1][0] = result[0];
+                    casy[1][1] = result[1];
+                    itoa(casy[1][1],zobrazeni_sekund,10);
+                    itoa(casy[1][0],zobrazeni_minut,10);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string("       ",1);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
+                    nokia_lcd_render();
+                    break;
+                case 2:
+                    time_dif(pocitani_minut,pocitani_sekund,casy[1][0],casy[1][1],result);
+                    casy[2][0] = result[0];
+                    casy[2][1] = result[1];
+                    itoa(casy[2][1],zobrazeni_sekund,10);
+                    itoa(casy[2][0],zobrazeni_minut,10);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string("       ",1);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
+                    nokia_lcd_render();
+                    break;
+                case 3:
+                    time_dif(pocitani_minut,pocitani_sekund,casy[2][0],casy[2][1],result);
+                    casy[3][0] = result[0];
+                    casy[3][1] = result[1];
+                    itoa(casy[3][1],zobrazeni_sekund,10);
+                    itoa(casy[3][0],zobrazeni_minut,10);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string("       ",1);
+                    nokia_lcd_set_cursor(0,30);
+                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
+                    nokia_lcd_render();
+                    break;
+                default:
+                    break;
+            }
+            if (kola < 4) kola++;
+        }
+        
+        
+    
+
         nokia_lcd_set_cursor(0,20);
-        nokia_lcd_write_string("       ",3);
+        nokia_lcd_write_string("       ",1);
         nokia_lcd_set_cursor(0,20);
-        nokia_lcd_write_string(dist,3);
-        nokia_lcd_render();        
+        nokia_lcd_write_string(dist,1);
+        nokia_lcd_render();       
     }
 }
 
