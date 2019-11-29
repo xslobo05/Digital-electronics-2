@@ -13,6 +13,7 @@
 
 /* Define ------------------------------------------------------------*/
 
+#define POCET_KOL 3+1
 /* Variables ---------------------------------------------------------*/
 
 /* Function prototypes -----------------------------------------------*/
@@ -44,31 +45,72 @@ uint8_t time_dif(uint8_t min1, uint8_t sec1, uint8_t min2, uint8_t sec2, uint8_t
     result[1] = sec_result;
     return 1;
 }
+ /* Fce vypocte dobu kola a zobrazi na dipleji */
+void prujezd(uint8_t track, uint8_t round_max,uint8_t round, uint8_t count_min, uint8_t count_sec, uint8_t casy[POCET_KOL][2])
+{
+    uint8_t result[2];
+
+    char disp_min[3], disp_sec[3];
+
+    if( round == 0){
+        casy[0][0] = count_min;
+        casy[0][1] = count_sec;
+        itoa(casy[0][1],disp_sec,10);
+        itoa(casy[0][0],disp_min,10);
+        nokia_lcd_set_cursor(0,10);
+        nokia_lcd_write_string("       ",1);
+        nokia_lcd_set_cursor(30,0);
+        nokia_lcd_write_string("START",1);
+        nokia_lcd_render();
+    }
+
+    if( round > 0 &&  round < round_max){
+        time_dif(count_min,count_sec,casy[0][0],casy[0][1],result);
+        casy[round][0] = result[0];
+        casy[round][1] = result[1];
+        itoa(casy[round][1],disp_sec,10);
+        itoa(casy[round][0],disp_min,10);
+        
+        if(track == 1){
+        nokia_lcd_set_cursor(0,(round + 1)*10);
+        //nokia_lcd_write_string("       ",1);
+        nokia_lcd_set_cursor(0,(round + 1)*10);
+        nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+        }
+
+        if(track == 2){
+        nokia_lcd_set_cursor(40,(round + 1)*10);
+        //nokia_lcd_write_string("       ",1);
+        nokia_lcd_set_cursor(40,(round + 1)*10);
+        nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+        }
+        
+        nokia_lcd_render();
+    
+    }
 
 
-/* Main --------------------------------------------------------------*/
-/* Generate a sequence of LFSR preudo-random values using 4- and 8-bit
- * structure. */
 
 
+}
 
 int main(void)
 {
     uint32_t distance, rtc;
     char dist[5];
-    char zobrazeni_sekund[3], zobrazeni_minut[3];
+    //char zobrazeni_sekund[3], zobrazeni_minut[3];
     bool detekce=1;
     uint8_t adresa_clocku = 0x68;
     uint8_t pocitani_minut=0, pocitani_desitek=0, pocitani_sekund=0;
-    uint8_t casy[4][2], kola=0;
+    uint8_t casy1[POCET_KOL][2], kola1=0, casy2[POCET_KOL][2], kola2=0;
     int i,j;
-    uint8_t result[2];
+    //uint8_t result[2];
 
     /* Inicializace displeje */
     nokia_lcd_init();                               
     nokia_lcd_clear();
-    nokia_lcd_write_string("Vzdalenost[cm]",1);
-    nokia_lcd_render();
+    //nokia_lcd_write_string("Vzdalenost[cm]",1);
+    //nokia_lcd_render();
 
     /* Inicializace DS3231 casoveho obvodu */
     twi_init();
@@ -76,10 +118,12 @@ int main(void)
     /* Inicializace HCSR04 senzoru vzdalenosti */
     usound_init();
 
-    for(i=0;i<4;i++)
+    for(i=0;i<POCET_KOL;i++)
     {
-        for(j=0;j<2;j++)
-            casy[i][j] = 0;
+        for(j=0;j<2;j++){
+            casy1[i][j] = 0;
+            casy2[i][j] = 0;
+        }
     }
 
     for(;;){
@@ -96,11 +140,11 @@ int main(void)
         rtc=twi_read_nack();
         twi_stop();
 
+    /* Převod času z RTC na minuty a sekundy */
         pocitani_sekund = 0b00001111 & rtc;
         rtc = rtc >> 4;
         pocitani_desitek = rtc;
-
-        
+   
         pocitani_sekund=10*pocitani_desitek + pocitani_sekund;
         if(pocitani_sekund == 59)   detekce=1;
     
@@ -110,67 +154,24 @@ int main(void)
             detekce=0;
         }
 
-        if(distance <= 10){
-            switch (kola) {
-                case 0:
-                    casy[0][0] = pocitani_minut;
-                    casy[0][1] = pocitani_sekund;
-                    itoa(casy[0][1],zobrazeni_sekund,10);
-                    itoa(casy[0][0],zobrazeni_minut,10);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string("       ",1);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
-                    nokia_lcd_render();
-                    break;
-                case 1:
-                    time_dif(pocitani_minut,pocitani_sekund,casy[0][0],casy[0][1],result);
-                    casy[1][0] = result[0];
-                    casy[1][1] = result[1];
-                    itoa(casy[1][1],zobrazeni_sekund,10);
-                    itoa(casy[1][0],zobrazeni_minut,10);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string("       ",1);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
-                    nokia_lcd_render();
-                    break;
-                case 2:
-                    time_dif(pocitani_minut,pocitani_sekund,casy[1][0],casy[1][1],result);
-                    casy[2][0] = result[0];
-                    casy[2][1] = result[1];
-                    itoa(casy[2][1],zobrazeni_sekund,10);
-                    itoa(casy[2][0],zobrazeni_minut,10);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string("       ",1);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
-                    nokia_lcd_render();
-                    break;
-                case 3:
-                    time_dif(pocitani_minut,pocitani_sekund,casy[2][0],casy[2][1],result);
-                    casy[3][0] = result[0];
-                    casy[3][1] = result[1];
-                    itoa(casy[3][1],zobrazeni_sekund,10);
-                    itoa(casy[3][0],zobrazeni_minut,10);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string("       ",1);
-                    nokia_lcd_set_cursor(0,30);
-                    nokia_lcd_write_string(zobrazeni_minut,1); nokia_lcd_write_string(" : ",1); nokia_lcd_write_string(zobrazeni_sekund,1);
-                    nokia_lcd_render();
-                    break;
-                default:
-                    break;
-            }
-            if (kola < 4) kola++;
+    /* Detekce průjezdu a měření času */
+        if(distance <= 8){
+            prujezd(1,POCET_KOL,kola1,pocitani_minut,pocitani_sekund,casy1);
+            if (kola1 < POCET_KOL) kola1++;
+            _delay_ms(1000);
+        }
+        if(distance >=9 && distance <= 16){
+            prujezd(2,POCET_KOL,kola2,pocitani_minut,pocitani_sekund,casy2);
+            if (kola2 < POCET_KOL) kola2++;
+            _delay_ms(1000);
         }
         
         
     
 
-        nokia_lcd_set_cursor(0,20);
-        nokia_lcd_write_string("       ",1);
-        nokia_lcd_set_cursor(0,20);
+        nokia_lcd_set_cursor(0,0);
+        nokia_lcd_write_string("   ",1);
+        nokia_lcd_set_cursor(0,0);
         nokia_lcd_write_string(dist,1);
         nokia_lcd_render();       
     }
