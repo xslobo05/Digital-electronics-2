@@ -19,12 +19,12 @@ SRCS := $(wildcard *.c)
 #SRCS += $(LIBRARY_DIR)/src/lcd.c
 SRCS += $(LIBRARY_DIR)/src/uart.c
 SRCS += $(LIBRARY_DIR)/src/twi.c
-#SRCS += $(LIBRARY_DIR)/src/gpio.c
+SRCS += $(LIBRARY_DIR)/src/gpio.c
 #SRCS += $(LIBRARY_DIR)/src/segment.c
 SRCS += $(LIBRARY_DIR)/src/timer.c
 SRCS += $(LIBRARY_DIR)/src/nokia5110.c
 SRCS += $(LIBRARY_DIR)/src/usound.c
-#SRCS += $(LIBRARY_DIR)/src/project.c
+SRCS += $(LIBRARY_DIR)/src/project.c
 ASSRC := $(wildcard *.S)
 
 

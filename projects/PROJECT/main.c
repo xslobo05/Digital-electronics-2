@@ -7,13 +7,15 @@
 #include "nokia5110.h"
 #include "usound.h"
 #include "twi.h"
+#include "hc05.h"
 #include <stdbool.h> 
 
 /* Typedef -----------------------------------------------------------*/
 
 /* Define ------------------------------------------------------------*/
 
-#define POCET_KOL 3+1
+#define POCET_KOL 7+1
+#define UART_BAUD_RATE 38400
 /* Variables ---------------------------------------------------------*/
 
 /* Function prototypes -----------------------------------------------*/
@@ -49,6 +51,8 @@ uint8_t time_dif(uint8_t min1, uint8_t sec1, uint8_t min2, uint8_t sec2, uint8_t
 void prujezd(uint8_t track, uint8_t round_max,uint8_t round, uint8_t count_min, uint8_t count_sec, uint8_t casy[POCET_KOL][2])
 {
     uint8_t result[2];
+    uint8_t adjust_round = 0;
+    char round_number[3];
 
     char disp_min[3], disp_sec[3];
 
@@ -57,10 +61,17 @@ void prujezd(uint8_t track, uint8_t round_max,uint8_t round, uint8_t count_min, 
         casy[0][1] = count_sec;
         itoa(casy[0][1],disp_sec,10);
         itoa(casy[0][0],disp_min,10);
-        nokia_lcd_set_cursor(0,10);
-        nokia_lcd_write_string("       ",1);
+        //nokia_lcd_set_cursor(0,10);
+        //nokia_lcd_write_string("       ",1);
         nokia_lcd_set_cursor(30,0);
-        nokia_lcd_write_string("START",1);
+        if(track == 1){
+            nokia_lcd_set_cursor(0,10);
+            nokia_lcd_write_string("START",1);
+        }
+        if(track == 2){
+            nokia_lcd_set_cursor(48,10);
+            nokia_lcd_write_string("START",1);
+        }
         nokia_lcd_render();
     }
 
@@ -70,29 +81,53 @@ void prujezd(uint8_t track, uint8_t round_max,uint8_t round, uint8_t count_min, 
         casy[round][1] = result[1];
         itoa(casy[round][1],disp_sec,10);
         itoa(casy[round][0],disp_min,10);
+        itoa(round,round_number,10);
         
+        if(round > 3){
+            adjust_round = 4;
+        }
+
         if(track == 1){
-        nokia_lcd_set_cursor(0,(round + 1)*10);
-        //nokia_lcd_write_string("       ",1);
-        nokia_lcd_set_cursor(0,(round + 1)*10);
-        nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+            if(round == 4){
+                nokia_lcd_set_cursor(0,10);nokia_lcd_write_string("        ",1);
+                nokia_lcd_set_cursor(0,20);nokia_lcd_write_string("        ",1);
+                nokia_lcd_set_cursor(0,30);nokia_lcd_write_string("        ",1);
+                nokia_lcd_set_cursor(0,40);nokia_lcd_write_string("        ",1);
+                nokia_lcd_set_cursor(0,(round + 1 - adjust_round)*10);
+                nokia_lcd_write_string(round_number,1); nokia_lcd_write_string(".",1);
+                nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+            }else{
+                nokia_lcd_set_cursor(0,(round + 1 - adjust_round)*10);
+                nokia_lcd_write_string(round_number,1); nokia_lcd_write_string(".",1);
+                nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+            }
         }
 
         if(track == 2){
-        nokia_lcd_set_cursor(40,(round + 1)*10);
-        //nokia_lcd_write_string("       ",1);
-        nokia_lcd_set_cursor(40,(round + 1)*10);
-        nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+            if(round == 4){
+                nokia_lcd_set_cursor(48,10);nokia_lcd_write_string("         ",1);
+                nokia_lcd_set_cursor(48,20);nokia_lcd_write_string("         ",1);
+                nokia_lcd_set_cursor(48,30);nokia_lcd_write_string("         ",1);
+                nokia_lcd_set_cursor(48,40);nokia_lcd_write_string("         ",1);
+                nokia_lcd_set_cursor(48,(round + 1 - adjust_round)*10);
+                nokia_lcd_write_string(round_number,1); nokia_lcd_write_string(".",1);
+                nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+            }else{
+                nokia_lcd_set_cursor(48,(round + 1 - adjust_round)*10);
+                nokia_lcd_write_string(round_number,1); nokia_lcd_write_string(".",1);
+                nokia_lcd_write_string(disp_min,1); nokia_lcd_write_string(":",1); nokia_lcd_write_string(disp_sec,1);
+            }
         }
-        
         nokia_lcd_render();
-    
     }
-
-
-
-
 }
+
+//HC05 TEST - start
+    
+//HC05 TEST - end
+
+
+
 
 int main(void)
 {
@@ -117,6 +152,10 @@ int main(void)
     
     /* Inicializace HCSR04 senzoru vzdalenosti */
     usound_init();
+
+    /* UART: asynchronous, 8-bit data, no parity, 1-bit stop */
+    //uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
+    //uart_puts("UART testing\r\n");
 
     for(i=0;i<POCET_KOL;i++)
     {
@@ -163,6 +202,8 @@ int main(void)
         if(distance >=9 && distance <= 16){
             prujezd(2,POCET_KOL,kola2,pocitani_minut,pocitani_sekund,casy2);
             if (kola2 < POCET_KOL) kola2++;
+            uart_init(UART_BAUD_SELECT(UART_BAUD_RATE, F_CPU));
+            uart_putc('x');
             _delay_ms(1000);
         }
         
@@ -170,7 +211,7 @@ int main(void)
     
 
         nokia_lcd_set_cursor(0,0);
-        nokia_lcd_write_string("   ",1);
+        nokia_lcd_write_string("    ",1);
         nokia_lcd_set_cursor(0,0);
         nokia_lcd_write_string(dist,1);
         nokia_lcd_render();       
@@ -180,5 +221,3 @@ int main(void)
 /* Interrupts --------------------------------------------------------*/
 /* Timer1 overflow interrupt routine.
  * Update state of the FSM. */
-
-
